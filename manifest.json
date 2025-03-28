@@ -19,7 +19,7 @@
   "content_scripts": [
     {
       "matches": [
-        "*://*/student/classes/*/core_tasks"
+        "https://*.managebac.com/student/classes/*/core_tasks*"
       ],
       "js": [
         "content.js"

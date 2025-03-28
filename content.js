@@ -1,4 +1,4 @@
-(function() {
+function runScript() {
     let data = {};
     let assignments = {};
     
@@ -41,6 +41,9 @@
 
     let contentWrapper = document.querySelector(".content-wrapper");
     if (contentWrapper) {
+        let existingTable = document.querySelector(".mb-table");
+        if (existingTable) existingTable.remove(); // Prevent duplicate tables
+
         let table = document.createElement("table");
         table.className = "mb-table"; // Apply ManageBac-like styles
         table.innerHTML = `<tr>
@@ -101,6 +104,10 @@
                 color: #2D3748;
                 font-size: 0.9rem;
             }
+            .mb-table{
+                font-size: 1.5rem !important;
+                margin-bottom:30px !important;
+            }
             .final-score-row {
                 background: #EDF2F7;
                 font-weight: bold;
@@ -108,4 +115,21 @@
         `;
         document.head.appendChild(style);
     }
-})();
+}
+runScript()
+// function checkAndRun() {
+//     if (window.location.pathname.match(/^\/student\/classes\/[^\/]+\/core_tasks$/)) {
+//         runScript();
+//     }
+// }
+
+// // Run once on initial page load
+// checkAndRun();
+
+// let lastUrl = window.location.href;
+// setInterval(() => {
+//     if (window.location.href !== lastUrl) {
+//         lastUrl = window.location.href;
+//         checkAndRun(); // Re-run script when URL changes
+//     }
+// }, 1000);
