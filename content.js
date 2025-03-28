@@ -31,7 +31,11 @@
             let obtained = parseFloat(score[1]);
             let total = parseFloat(score[2]);
             let percentage = (obtained / total) * 100;
-            assignments[title] = { category, percentage };
+            
+            if (!assignments[category]) {
+                assignments[category] = [];
+            }
+            assignments[category].push(percentage);
         }
     });
 
@@ -40,36 +44,29 @@
         let table = document.createElement("table");
         table.className = "mb-table"; // Apply ManageBac-like styles
         table.innerHTML = `<tr>
-            <th>Assignment Name</th>
             <th>Category</th>
             <th>Weightage</th>
-            <th>Points Scored (%)</th>
+            <th>Average Score (%)</th>
             <th>Weightage Contribution</th>
         </tr>`;
         
         let finalScore = 0;
-        Object.keys(assignments).forEach(title => {
-            let { category, percentage } = assignments[title];
+        Object.keys(assignments).forEach(category => {
             let weightage = data[category] || 0;
-            let contribution = (percentage * weightage) / 100;
+            let avgPercentage = assignments[category].reduce((a, b) => a + b, 0) / assignments[category].length;
+            let contribution = (avgPercentage * weightage) / 100;
             finalScore += contribution;
             
             table.innerHTML += `<tr>
-                <td>${title}</td>
-                <td><span class="mb-badge">${category}</span></td>
+                <td>${category}</td>
                 <td>${weightage}%</td>
-                <td>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${percentage}%;"></div>
-                    </div>
-                    ${percentage.toFixed(2)}%
-                </td>
+                <td>${avgPercentage.toFixed(2)}%</td>
                 <td>${contribution.toFixed(2)}%</td>
             </tr>`;
         });
 
         table.innerHTML += `<tr class="final-score-row">
-            <td colspan="4"><strong>Final Score</strong></td>
+            <td colspan="3"><strong>Final Score</strong></td>
             <td><strong>${finalScore.toFixed(2)}%</strong></td>
         </tr>`;
 
@@ -103,19 +100,6 @@
                 background: #E2E8F0;
                 color: #2D3748;
                 font-size: 0.9rem;
-            }
-            .progress-bar {
-                height: 10px;
-                width: 100px;
-                background: #E2E8F0;
-                border-radius: 5px;
-                overflow: hidden;
-                position: relative;
-            }
-            .progress-fill {
-                height: 100%;
-                background: #3182CE;
-                transition: width 0.5s ease-in-out;
             }
             .final-score-row {
                 background: #EDF2F7;
