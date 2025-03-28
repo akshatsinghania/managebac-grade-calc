@@ -117,19 +117,3 @@ function runScript() {
     }
 }
 runScript()
-// function checkAndRun() {
-//     if (window.location.pathname.match(/^\/student\/classes\/[^\/]+\/core_tasks$/)) {
-//         runScript();
-//     }
-// }
-
-// // Run once on initial page load
-// checkAndRun();
-
-// let lastUrl = window.location.href;
-// setInterval(() => {
-//     if (window.location.href !== lastUrl) {
-//         lastUrl = window.location.href;
-//         checkAndRun(); // Re-run script when URL changes
-//     }
-// }, 1000);
