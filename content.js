@@ -12,7 +12,7 @@ function runScript() {
         }
     });
 
-    // ✅ Extract assignments and their corresponding marks
+    // Extract assignments and their corresponding marks
     document.querySelectorAll(".fusion-card-item").forEach(item => {
         let titleElement = item.querySelector(".title a");
         let title = titleElement ? titleElement.innerText.trim() : "Unknown";
@@ -32,7 +32,7 @@ function runScript() {
             if (!assignments[category]) {
                 assignments[category] = [];
             }
-            assignments[category].push({ title, percentage });
+            assignments[category].push({ title, obtained, total, percentage });
         }
     });
 
@@ -61,13 +61,19 @@ function runScript() {
             finalScore += contribution;
 
             let individualScoresHTML = assignments[category]
-                .map(a => `<div contenteditable="true" class="editable-score" data-category="${category}">${a.percentage.toFixed(2)}</div>`)
+                .map(a => `<div class="score-container">
+                    <span class="score-title">${a.title}</span>: 
+                    <span contenteditable="true" class="editable-obtained" data-category="${category}">${a.obtained}</span>
+                    / 
+                    <span contenteditable="true" class="editable-total" data-category="${category}">${a.total}</span>
+                    (<span class="score-percentage">${a.percentage.toFixed(2)}%</span>)
+                </div>`)
                 .join("");
 
             table.innerHTML += `<tr>
                 <td>${category}</td>
                 <td contenteditable="true" class="editable-weightage">${weightage}%</td>
-                <td contenteditable="true" class="editable-average">${avgPercentage.toFixed(2)}%</td>
+                <td class="average-score">${avgPercentage.toFixed(2)}%</td>
                 <td class="contribution">${contribution.toFixed(2)}%</td>
                 <td>${individualScoresHTML}</td>
             </tr>`;
@@ -80,43 +86,51 @@ function runScript() {
 
         contentWrapper.appendChild(table);
 
-        // ✅ Make table values dynamic
-        document.querySelectorAll(".editable-score, .editable-weightage, .editable-average").forEach(cell => {
+        // Make table values dynamic
+        document.querySelectorAll(".editable-obtained, .editable-total, .editable-weightage").forEach(cell => {
             cell.addEventListener("input", () => recalculateScores());
         });
 
         function recalculateScores() {
-            let newData = {};
-            let newAssignments = {};
+            let finalScore = 0;
 
             document.querySelectorAll(".mb-table tr:not(.final-score-row)").forEach(row => {
                 let category = row.children[0].innerText.trim();
                 let weightageCell = row.children[1];
                 let avgScoreCell = row.children[2];
                 let contributionCell = row.children[3];
-                let individualScores = row.children[4].querySelectorAll(".editable-score");
+                let scoreContainers = row.children[4].querySelectorAll(".score-container");
 
                 let weightage = parseFloat(weightageCell.innerText.replace('%', '')) || 0;
-                let scores = Array.from(individualScores).map(score => parseFloat(score.innerText) || 0);
-                let avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+                
+                // Calculate scores based on obtained/total values
+                let percentages = [];
+                scoreContainers.forEach(container => {
+                    let obtainedElement = container.querySelector(".editable-obtained");
+                    let totalElement = container.querySelector(".editable-total");
+                    let percentageElement = container.querySelector(".score-percentage");
+                    
+                    let obtained = parseFloat(obtainedElement.innerText) || 0;
+                    let total = parseFloat(totalElement.innerText) || 1; // Avoid division by zero
+                    
+                    let percentage = (obtained / total) * 100;
+                    percentageElement.innerText = `${percentage.toFixed(2)}%`;
+                    percentages.push(percentage);
+                });
+                
+                let avgScore = percentages.length > 0 ? percentages.reduce((a, b) => a + b, 0) / percentages.length : 0;
                 let contribution = (avgScore * weightage) / 100;
 
-                weightageCell.innerText = `${weightage.toFixed(2)}%`;
                 avgScoreCell.innerText = `${avgScore.toFixed(2)}%`;
                 contributionCell.innerText = `${contribution.toFixed(2)}%`;
-
-                newData[category] = weightage;
-                newAssignments[category] = scores;
+                
+                finalScore += contribution;
             });
-
-            let finalScore = Object.keys(newAssignments).reduce((sum, category) => {
-                return sum + (newAssignments[category].reduce((a, b) => a + b, 0) / newAssignments[category].length || 0) * (newData[category] / 100);
-            }, 0);
 
             document.getElementById("final-score").innerText = `${finalScore.toFixed(2)}%`;
         }
 
-        // ✅ Inject ManageBac-Like Styles
+        // Inject ManageBac-Like Styles
         let style = document.createElement("style");
         style.innerHTML = `
             .mb-table {
@@ -126,6 +140,7 @@ function runScript() {
                 border-radius: 10px;
                 overflow: hidden;
                 box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                margin-top: 20px;
             }
             .mb-table th, .mb-table td {
                 padding: 12px 15px;
@@ -138,20 +153,25 @@ function runScript() {
                 color: #4A5568;
                 font-weight: 600;
             }
-            .mb-table td:last-child {
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                max-width: 250px;
-            }
-            .editable-score, .editable-weightage, .editable-average {
-                cursor: text;
+            .score-container {
+                margin-bottom: 8px;
+                padding: 4px;
                 background-color: #f8f9fa;
+                border-radius: 4px;
+            }
+            .score-title {
+                font-weight: 500;
+                margin-right: 4px;
+            }
+            .editable-obtained, .editable-total, .editable-weightage {
+                cursor: text;
+                background-color: #edf2f7;
                 border-radius: 4px;
                 padding: 2px 4px;
                 display: inline-block;
+                min-width: 30px;
             }
-            .editable-score:focus, .editable-weightage:focus, .editable-average:focus {
+            .editable-obtained:focus, .editable-total:focus, .editable-weightage:focus {
                 outline: 2px solid #4299E1;
                 background-color: #ffffff;
             }
