@@ -41,6 +41,20 @@ function runScript() {
         let existingTable = document.querySelector(".mb-table");
         if (existingTable) existingTable.remove(); // Prevent duplicate tables
 
+        // Create a custom data structure to track values
+        const gradeData = {};
+        Object.keys(assignments).forEach(category => {
+            gradeData[category] = {
+                weightage: data[category] || 0,
+                assignments: assignments[category].map(a => ({
+                    title: a.title,
+                    obtained: a.obtained,
+                    total: a.total,
+                    percentage: a.percentage
+                }))
+            };
+        });
+
         let table = document.createElement("table");
         table.className = "mb-table";
         table.innerHTML = `<tr>
@@ -53,26 +67,27 @@ function runScript() {
 
         let finalScore = 0;
 
-        Object.keys(assignments).forEach(category => {
-            let weightage = data[category] || 0;
-            let scores = assignments[category].map(a => a.percentage);
-            let avgPercentage = scores.reduce((a, b) => a + b, 0) / scores.length;
+        Object.keys(gradeData).forEach(category => {
+            let categoryData = gradeData[category];
+            let weightage = categoryData.weightage;
+            let scores = categoryData.assignments.map(a => a.percentage);
+            let avgPercentage = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
             let contribution = (avgPercentage * weightage) / 100;
             finalScore += contribution;
 
-            let individualScoresHTML = assignments[category]
-                .map(a => `<div class="score-container">
+            let individualScoresHTML = categoryData.assignments
+                .map((a, index) => `<div class="score-container">
                     <span class="score-title">${a.title}</span>: 
-                    <span contenteditable="true" class="editable-obtained" data-category="${category}">${a.obtained}</span>
+                    <span contenteditable="true" class="editable-obtained" data-category="${category}" data-index="${index}">${a.obtained}</span>
                     / 
-                    <span contenteditable="true" class="editable-total" data-category="${category}">${a.total}</span>
+                    <span contenteditable="true" class="editable-total" data-category="${category}" data-index="${index}">${a.total}</span>
                     (<span class="score-percentage">${a.percentage.toFixed(2)}%</span>)
                 </div>`)
                 .join("");
 
             table.innerHTML += `<tr>
                 <td>${category}</td>
-                <td contenteditable="true" class="editable-weightage">${weightage}%</td>
+                <td contenteditable="true" class="editable-weightage" data-category="${category}">${weightage}%</td>
                 <td class="average-score">${avgPercentage.toFixed(2)}%</td>
                 <td class="contribution">${contribution.toFixed(2)}%</td>
                 <td>${individualScoresHTML}</td>
@@ -86,47 +101,83 @@ function runScript() {
 
         contentWrapper.appendChild(table);
 
-        // Make table values dynamic
-        document.querySelectorAll(".editable-obtained, .editable-total, .editable-weightage").forEach(cell => {
-            cell.addEventListener("input", () => recalculateScores());
+        // Handle editing of values
+        document.querySelectorAll(".editable-obtained").forEach(cell => {
+            cell.addEventListener("blur", function() {
+                const category = this.dataset.category;
+                const index = parseInt(this.dataset.index);
+                const value = parseFloat(this.innerText) || 0;
+                
+                // Update our data structure
+                gradeData[category].assignments[index].obtained = value;
+                gradeData[category].assignments[index].percentage = 
+                    (value / gradeData[category].assignments[index].total) * 100;
+                
+                // Recalculate everything
+                updateDisplay();
+            });
         });
 
-        function recalculateScores() {
+        document.querySelectorAll(".editable-total").forEach(cell => {
+            cell.addEventListener("blur", function() {
+                const category = this.dataset.category;
+                const index = parseInt(this.dataset.index);
+                const value = parseFloat(this.innerText) || 1; // Avoid division by zero
+                
+                // Update our data structure
+                gradeData[category].assignments[index].total = value;
+                gradeData[category].assignments[index].percentage = 
+                    (gradeData[category].assignments[index].obtained / value) * 100;
+                
+                // Recalculate everything
+                updateDisplay();
+            });
+        });
+
+        document.querySelectorAll(".editable-weightage").forEach(cell => {
+            cell.addEventListener("blur", function() {
+                const category = this.dataset.category;
+                const value = parseFloat(this.innerText.replace('%', '')) || 0;
+                
+                // Update our data structure
+                gradeData[category].weightage = value;
+                
+                // Recalculate everything
+                updateDisplay();
+            });
+        });
+
+        function updateDisplay() {
             let finalScore = 0;
 
-            document.querySelectorAll(".mb-table tr:not(.final-score-row)").forEach(row => {
-                let category = row.children[0].innerText.trim();
-                let weightageCell = row.children[1];
-                let avgScoreCell = row.children[2];
-                let contributionCell = row.children[3];
-                let scoreContainers = row.children[4].querySelectorAll(".score-container");
-
-                let weightage = parseFloat(weightageCell.innerText.replace('%', '')) || 0;
-                
-                // Calculate scores based on obtained/total values
-                let percentages = [];
-                scoreContainers.forEach(container => {
-                    let obtainedElement = container.querySelector(".editable-obtained");
-                    let totalElement = container.querySelector(".editable-total");
-                    let percentageElement = container.querySelector(".score-percentage");
-                    
-                    let obtained = parseFloat(obtainedElement.innerText) || 0;
-                    let total = parseFloat(totalElement.innerText) || 1; // Avoid division by zero
-                    
-                    let percentage = (obtained / total) * 100;
-                    percentageElement.innerText = `${percentage.toFixed(2)}%`;
-                    percentages.push(percentage);
-                });
-                
-                let avgScore = percentages.length > 0 ? percentages.reduce((a, b) => a + b, 0) / percentages.length : 0;
-                let contribution = (avgScore * weightage) / 100;
-
-                avgScoreCell.innerText = `${avgScore.toFixed(2)}%`;
-                contributionCell.innerText = `${contribution.toFixed(2)}%`;
+            Object.keys(gradeData).forEach(category => {
+                const categoryData = gradeData[category];
+                const scores = categoryData.assignments.map(a => a.percentage);
+                const avgPercentage = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+                const contribution = (avgPercentage * categoryData.weightage) / 100;
                 
                 finalScore += contribution;
+
+                // Update UI
+                const rows = Array.from(document.querySelectorAll(".mb-table tr:not(:first-child):not(.final-score-row)"));
+                const row = rows.find(r => r.cells[0].innerText.trim() === category);
+                
+                if (row) {
+                    // Update average score and contribution
+                    row.cells[2].innerText = `${avgPercentage.toFixed(2)}%`;
+                    row.cells[3].innerText = `${contribution.toFixed(2)}%`;
+                    
+                    // Update percentage displays for each assignment
+                    const percentageElements = row.querySelectorAll(".score-percentage");
+                    categoryData.assignments.forEach((assignment, idx) => {
+                        if (percentageElements[idx]) {
+                            percentageElements[idx].innerText = `${assignment.percentage.toFixed(2)}%`;
+                        }
+                    });
+                }
             });
 
+            // Update final score
             document.getElementById("final-score").innerText = `${finalScore.toFixed(2)}%`;
         }
 
