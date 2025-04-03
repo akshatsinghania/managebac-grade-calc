@@ -101,49 +101,101 @@ function runScript() {
 
         contentWrapper.appendChild(table);
 
+        // Debounce function to limit update frequency during typing
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                const context = this;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), wait);
+            };
+        }
+
+        // Create a debounced version of updateDisplay
+        const debouncedUpdate = debounce(updateDisplay, 100);
+
+        // Update handler function - extracts current value and updates data
+        function handleValueUpdate(element, updateFn) {
+            // Get current cursor position
+            const selection = window.getSelection();
+            const range = selection.getRangeAt(0);
+            const cursorPosition = range.startOffset;
+            
+            // Clean the input value (remove any non-numeric characters except period)
+            const rawValue = element.innerText;
+            const cleanValue = rawValue.replace(/[^0-9.]/g, '');
+            
+            // Only update if needed
+            if (rawValue !== cleanValue) {
+                element.innerText = cleanValue;
+                
+                // Restore cursor position
+                const newRange = document.createRange();
+                newRange.setStart(element.firstChild || element, Math.min(cursorPosition, cleanValue.length));
+                newRange.setEnd(element.firstChild || element, Math.min(cursorPosition, cleanValue.length));
+                selection.removeAllRanges();
+                selection.addRange(newRange);
+            }
+            
+            // Call the update function with the cleaned value
+            updateFn(cleanValue);
+        }
+
         // Handle editing of values
         document.querySelectorAll(".editable-obtained").forEach(cell => {
-            cell.addEventListener("blur", function() {
+            // Update as you type
+            cell.addEventListener("input", function() {
                 const category = this.dataset.category;
                 const index = parseInt(this.dataset.index);
-                const value = parseFloat(this.innerText) || 0;
                 
-                // Update our data structure
-                gradeData[category].assignments[index].obtained = value;
-                gradeData[category].assignments[index].percentage = 
-                    (value / gradeData[category].assignments[index].total) * 100;
-                
-                // Recalculate everything
-                updateDisplay();
+                handleValueUpdate(this, (value) => {
+                    const numValue = parseFloat(value) || 0;
+                    
+                    // Update our data structure
+                    gradeData[category].assignments[index].obtained = numValue;
+                    gradeData[category].assignments[index].percentage = 
+                        (numValue / gradeData[category].assignments[index].total) * 100;
+                    
+                    // Recalculate everything
+                    debouncedUpdate();
+                });
             });
         });
 
         document.querySelectorAll(".editable-total").forEach(cell => {
-            cell.addEventListener("blur", function() {
+            // Update as you type
+            cell.addEventListener("input", function() {
                 const category = this.dataset.category;
                 const index = parseInt(this.dataset.index);
-                const value = parseFloat(this.innerText) || 1; // Avoid division by zero
                 
-                // Update our data structure
-                gradeData[category].assignments[index].total = value;
-                gradeData[category].assignments[index].percentage = 
-                    (gradeData[category].assignments[index].obtained / value) * 100;
-                
-                // Recalculate everything
-                updateDisplay();
+                handleValueUpdate(this, (value) => {
+                    const numValue = parseFloat(value) || 1; // Avoid division by zero
+                    
+                    // Update our data structure
+                    gradeData[category].assignments[index].total = numValue;
+                    gradeData[category].assignments[index].percentage = 
+                        (gradeData[category].assignments[index].obtained / numValue) * 100;
+                    
+                    // Recalculate everything
+                    debouncedUpdate();
+                });
             });
         });
 
         document.querySelectorAll(".editable-weightage").forEach(cell => {
-            cell.addEventListener("blur", function() {
+            // Update as you type
+            cell.addEventListener("input", function() {
                 const category = this.dataset.category;
-                const value = parseFloat(this.innerText.replace('%', '')) || 0;
                 
-                // Update our data structure
-                gradeData[category].weightage = value;
-                
-                // Recalculate everything
-                updateDisplay();
+                handleValueUpdate(this, (value) => {
+                    const numValue = parseFloat(value) || 0;
+                    
+                    // Update our data structure
+                    gradeData[category].weightage = numValue;
+                    
+                    // Recalculate everything
+                    debouncedUpdate();
+                });
             });
         });
 
